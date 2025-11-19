@@ -1,0 +1,5 @@
+streamlit
+PyPDF2
+Pillow
+python-pptx
+pdf2image
