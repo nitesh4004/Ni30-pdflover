@@ -31,23 +31,25 @@ st.set_page_config(
 if 'current_tool' not in st.session_state:
     st.session_state['current_tool'] = "Compress Docs"
 
-# --- 3. CUSTOM CSS (UPDATED FOR HIGH CONTRAST & VISIBILITY) ---
+# Path to local logo (fallback to remote if not found)
+LOCAL_LOGO_PATH = "/mnt/data/ee0a0a38-adb8-4836-9e16-1632d846a6d9.png"
+REMOTE_LOGO_URL = "https://github.com/nitesh4004/Ni30-pdflover/blob/main/docmint.png?raw=true"
+
+# --- 3. CUSTOM CSS (UPDATED FOR LARGER LOGO & SIDEBAR TITLE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
     :root{
-        --bg: #f8fafc;            /* app background */
-        --panel: #ffffff;         /* card/panel background */
-        --muted: #94a3b8;        /* secondary text */
-        --text: #0f172a;         /* primary text */
-        --accent: #0ea5a4;       /* teal accent for sidebar categories */
-        --primary: #0b69ff;      /* main action color (buttons) */
-        --danger: #ef4444;       /* error / remove */
-        --success: #10b981;      /* success */
-        --border: #e6eef6;       /* soft border */
-        --result-bg: #f1f9ff;    /* result box bg */
-        --nav-hover: #e6f6f9;    /* hover for nav */
+        --bg: #f8fafc;
+        --panel: #ffffff;
+        --muted: #94a3b8;
+        --text: #0f172a;
+        --accent: #0ea5a4;
+        --primary: #0b69ff;
+        --border: #e6eef6;
+        --result-bg: #f1f9ff;
+        --nav-hover: #e6f6f9;
     }
 
     html, body, [class*="css"] {
@@ -63,24 +65,36 @@ st.markdown("""
         padding: 1rem;
     }
 
-    /* Logo Area */
-    .sidebar-logo {
+    /* Centered Logo Area */
+    .sidebar-logo-wrap {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 12px;
-        padding: 0.7rem 0;
+        gap: 8px;
+        padding: 0.8rem 0;
         margin-bottom: 0.9rem;
         border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo-img {
+        width: 110px;
+        height: 110px;
+        object-fit: cover;
+        border-radius: 12px;
+        box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+        border: 1px solid rgba(11,105,255,0.06);
     }
     .sidebar-title {
         font-size: 1.25rem;
         font-weight: 800;
         color: var(--text);
         letter-spacing: -0.2px;
+        margin-top: 4px;
+        margin-bottom: 0px;
     }
     .sidebar-sub {
-        font-size: 0.82rem;
+        font-size: 0.86rem;
         color: var(--muted);
+        margin-top: 0px;
     }
 
     /* Sidebar section captions */
@@ -91,7 +105,7 @@ st.markdown("""
         margin-bottom: 0.2rem;
     }
 
-    /* Nav Buttons (make them visible & grouped) */
+    /* Nav Buttons */
     div.stButton > button {
         width: 100%;
         display:flex;
@@ -113,19 +127,15 @@ st.markdown("""
         transform: translateY(-1px);
     }
 
-    /* Primary Action Buttons (Streamlit often adds kind="primary") */
+    /* Primary Action Buttons */
     div.stButton > button[kind="primary"] {
         background-color: var(--primary);
         color: white;
         border: none;
         box-shadow: 0 6px 16px rgba(11,105,255,0.12);
     }
-    /* Make primary buttons full width and high-contrast */
-    button[aria-label="Button"] {
-        outline: none;
-    }
 
-    /* Result Area Box (more prominent) */
+    /* Result Area Box */
     .result-box {
         background-color: var(--result-bg);
         border: 1px solid rgba(11,105,255,0.08);
@@ -136,35 +146,6 @@ st.markdown("""
         box-shadow: 0 8px 24px rgba(12, 74, 175, 0.02);
     }
 
-    /* Cards & panels inside main area */
-    .stMarkdown, .stContainer {
-        background: transparent;
-    }
-
-    h3 { 
-        font-size: 1.4rem; 
-        font-weight: 700; 
-        margin-bottom: 1rem; 
-        text-align: left;
-        color: var(--text);
-    }
-    h4 { 
-        font-size: 1rem; 
-        font-weight: 700; 
-        margin-top: 0.9rem; 
-        margin-bottom: 0.5rem; 
-        color: #1f2937; 
-    }
-
-    /* Metrics / small info */
-    .stMetricValue {
-        color: var(--text) !important;
-    }
-    .stMetricLabel {
-        color: var(--muted) !important;
-    }
-
-    /* File uploader styling hint - make it more visible */
     .stFileUploader {
         border-radius: 10px;
         border: 1px dashed var(--border);
@@ -172,12 +153,10 @@ st.markdown("""
         background: var(--panel);
     }
 
-    /* Smaller screen tweaks */
     @media (max-width: 768px) {
-        .sidebar-logo { gap:8px; }
+        .sidebar-logo-img { width: 88px; height: 88px; }
         .sidebar-title { font-size:1.1rem; }
     }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -234,40 +213,51 @@ def compress_image_to_target(img, target_kb):
 # --- 5. SIDEBAR ---
 def render_sidebar():
     with st.sidebar:
-        logo_url = "https://github.com/nitesh4004/Ni30-pdflover/blob/main/docmint.png?raw=true"
-        st.markdown(f"""
-        <div class="sidebar-logo">
-            <img src="{logo_url}" style="height: 44px; width:44px; border-radius: 8px; object-fit:cover;">
-            <div>
-                <div class="sidebar-title">DocMint</div>
-                <div class="sidebar-sub">Pro Workspace</div>
+        # Use local logo if available; otherwise use remote URL
+        logo_to_show = LOCAL_LOGO_PATH if os.path.exists(LOCAL_LOGO_PATH) else REMOTE_LOGO_URL
+
+        # Markup wrapper so CSS class can be applied for exact sizing & centering
+        if os.path.exists(LOCAL_LOGO_PATH):
+            # For local file use st.image (reliable for local assets)
+            st.markdown('<div class="sidebar-logo-wrap">', unsafe_allow_html=True)
+            st.image(LOCAL_LOGO_PATH, use_column_width=False, width=110)
+            st.markdown(f"<div style='text-align:center;'><div class='sidebar-title'>DocMint</div><div class='sidebar-sub'>Web App — Pro Workspace</div></div>", unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            # For remote URL, use HTML <img> to apply class
+            st.markdown(f"""
+            <div class="sidebar-logo-wrap">
+                <img src="{REMOTE_LOGO_URL}" class="sidebar-logo-img" />
+                <div style='text-align:center;'>
+                    <div class="sidebar-title">DocMint</div>
+                    <div class="sidebar-sub">Web App — Pro Workspace</div>
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
         st.caption("NEW TOOLS")
-        if st.button("🗜️ Compress Docs"): st.session_state['current_tool'] = "Compress Docs"
+        if st.button("Compress Docs"): st.session_state['current_tool'] = "Compress Docs"
 
         st.caption("IMAGE TOOLS")
-        if st.button("📐 Resize Image"): st.session_state['current_tool'] = "Resize Image"
-        if st.button("🎨 Image Editor"): st.session_state['current_tool'] = "Image Editor"
-        if st.button("🔄 Convert Format"): st.session_state['current_tool'] = "Convert Format"
-        if st.button("📑 JPG to PDF"): st.session_state['current_tool'] = "JPG to PDF"
+        if st.button("Resize Image"): st.session_state['current_tool'] = "Resize Image"
+        if st.button("Image Editor"): st.session_state['current_tool'] = "Image Editor"
+        if st.button("Convert Format"): st.session_state['current_tool'] = "Convert Format"
+        if st.button("JPG to PDF"): st.session_state['current_tool'] = "JPG to PDF"
 
         st.write("")
         st.caption("PDF TOOLS")
-        if st.button("🔗 Merge PDF"): st.session_state['current_tool'] = "Merge PDF"
-        if st.button("✂️ Split PDF"): st.session_state['current_tool'] = "Split PDF"
-        if st.button("🖼️ PDF to JPG"): st.session_state['current_tool'] = "PDF to JPG"
-        if st.button("📝 PDF Text"): st.session_state['current_tool'] = "PDF Text"
+        if st.button("Merge PDF"): st.session_state['current_tool'] = "Merge PDF"
+        if st.button("Split PDF"): st.session_state['current_tool'] = "Split PDF"
+        if st.button("PDF to JPG"): st.session_state['current_tool'] = "PDF to JPG"
+        if st.button("PDF Text"): st.session_state['current_tool'] = "PDF Text"
         
         st.write("")
         st.caption("OFFICE TOOLS")
-        if st.button("📊 Merge PPTX"): st.session_state['current_tool'] = "Merge PPTX"
+        if st.button("Merge PPTX"): st.session_state['current_tool'] = "Merge PPTX"
 
 # --- 6. TOOLS (VERTICAL FLOW) ---
 def tool_compress_docs():
-    st.markdown(f"### 🗜️ Compress Documents")
+    st.markdown("### Compress Documents")
     
     doc_type = st.radio("Select Type", ["Image (Target Size)", "PDF (Reduce Size)"], horizontal=True)
     st.markdown("---")
@@ -289,7 +279,7 @@ def tool_compress_docs():
                     if res_buf:
                         st.markdown('<div class="result-box">', unsafe_allow_html=True)
                         st.success(f"✅ Success! ({method})")
-                        st.download_button("⬇️ Download Result", res_buf.getvalue(), f"compressed_{uploaded.name}", "image/jpeg", type="primary")
+                        st.download_button("Download Result", res_buf.getvalue(), f"compressed_{uploaded.name}", "image/jpeg", type="primary")
                         st.markdown('</div>', unsafe_allow_html=True)
                     else:
                         st.error("Could not reach target size.")
@@ -313,12 +303,12 @@ def tool_compress_docs():
                     writer.write(out)
                     
                     st.markdown('<div class="result-box">', unsafe_allow_html=True)
-                    st.success(f"✅ Done! New Size: {get_size_format(out.tell())}")
-                    st.download_button("⬇️ Download PDF", out.getvalue(), f"compressed_{uploaded.name}", "application/pdf", type="primary")
+                    st.success(f"Done! New Size: {get_size_format(out.tell())}")
+                    st.download_button("Download PDF", out.getvalue(), f"compressed_{uploaded.name}", "application/pdf", type="primary")
                     st.markdown('</div>', unsafe_allow_html=True)
 
 def tool_resize_image():
-    st.markdown(f"### 📐 Resize Image")
+    st.markdown("### Resize Image")
     uploaded = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg", "webp"])
     
     if uploaded:
@@ -354,11 +344,11 @@ def tool_resize_image():
             
             st.markdown('<div class="result-box">', unsafe_allow_html=True)
             st.image(new_img, caption="Resized Result", width=300)
-            st.download_button("⬇️ Download Image", b.getvalue(), f"resized.{save_fmt.lower()}", f"image/{save_fmt.lower()}", type="primary")
+            st.download_button("Download Image", b.getvalue(), f"resized.{save_fmt.lower()}", f"image/{save_fmt.lower()}", type="primary")
             st.markdown('</div>', unsafe_allow_html=True)
 
 def tool_img_editor():
-    st.markdown(f"### 🎨 Image Editor")
+    st.markdown("### Image Editor")
     uploaded = st.file_uploader("Upload Image", type=["png", "jpg"])
     
     if uploaded:
@@ -383,11 +373,11 @@ def tool_img_editor():
             b = BytesIO()
             fmt = img.format if img.format else "PNG"
             processed.save(b, format=fmt)
-            st.download_button("⬇️ Download Image", b.getvalue(), f"edited.{fmt.lower()}", f"image/{fmt.lower()}", type="primary")
+            st.download_button("Download Image", b.getvalue(), f"edited.{fmt.lower()}", f"image/{fmt.lower()}", type="primary")
             st.markdown('</div>', unsafe_allow_html=True)
 
 def tool_merge_pdf():
-    st.markdown(f"### 🔗 Merge PDFs")
+    st.markdown("### Merge PDFs")
     files = st.file_uploader("Select PDF Files", type="pdf", accept_multiple_files=True)
     
     if files:
@@ -403,11 +393,11 @@ def tool_merge_pdf():
             
             st.markdown('<div class="result-box">', unsafe_allow_html=True)
             st.success("PDFs Merged Successfully!")
-            st.download_button("⬇️ Download Merged PDF", out.getvalue(), "merged.pdf", "application/pdf", type="primary")
+            st.download_button("Download Merged PDF", out.getvalue(), "merged.pdf", "application/pdf", type="primary")
             st.markdown('</div>', unsafe_allow_html=True)
 
 def tool_split_pdf():
-    st.markdown(f"### ✂️ Split PDF")
+    st.markdown("### Split PDF")
     f = st.file_uploader("Upload PDF", type="pdf")
     
     if f:
@@ -425,7 +415,7 @@ def tool_split_pdf():
                 o = BytesIO()
                 w.write(o)
                 st.markdown('<div class="result-box">', unsafe_allow_html=True)
-                st.download_button("⬇️ Download Page", o.getvalue(), f"page_{p_num}.pdf", "application/pdf", type="primary")
+                st.download_button("Download Page", o.getvalue(), f"page_{p_num}.pdf", "application/pdf", type="primary")
                 st.markdown('</div>', unsafe_allow_html=True)
         else:
             if st.button("Split All Pages", type="primary", use_container_width=True):
@@ -439,11 +429,11 @@ def tool_split_pdf():
                 
                 st.markdown('<div class="result-box">', unsafe_allow_html=True)
                 st.success("All pages split successfully!")
-                st.download_button("⬇️ Download ZIP", create_zip(files, "split.zip"), "split.zip", "application/zip", type="primary")
+                st.download_button("Download ZIP", create_zip(files, "split.zip"), "split.zip", "application/zip", type="primary")
                 st.markdown('</div>', unsafe_allow_html=True)
 
 def tool_convert_format():
-    st.markdown(f"### 🔄 Convert Format")
+    st.markdown("### Convert Format")
     u = st.file_uploader("Upload Image", type=["png", "jpg", "webp"])
     
     if u:
@@ -458,7 +448,7 @@ def tool_convert_format():
             mime = "application/pdf" if target == "PDF" else f"image/{target.lower()}"
             
             st.markdown('<div class="result-box">', unsafe_allow_html=True)
-            st.download_button(f"⬇️ Download {target}", b.getvalue(), f"converted.{target.lower()}", mime, type="primary")
+            st.download_button(f"Download {target}", b.getvalue(), f"converted.{target.lower()}", mime, type="primary")
             st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 7. MAIN ROUTING ---
@@ -472,14 +462,14 @@ elif tool == "Merge PDF": tool_merge_pdf()
 elif tool == "Split PDF": tool_split_pdf()
 elif tool == "Convert Format": tool_convert_format()
 elif tool == "JPG to PDF":
-    st.markdown("### 📑 JPG to PDF")
+    st.markdown("### JPG to PDF")
     u = st.file_uploader("Upload Images", type=["png", "jpg"], accept_multiple_files=True)
     if u and st.button("Create PDF", type="primary", use_container_width=True):
         imgs = [Image.open(f).convert("RGB") for f in u]
         b = BytesIO()
         imgs[0].save(b, "PDF", save_all=True, append_images=imgs[1:])
         st.markdown('<div class="result-box">', unsafe_allow_html=True)
-        st.download_button("⬇️ Download PDF", b.getvalue(), "docmint_images.pdf", "application/pdf", type="primary")
+        st.download_button("Download PDF", b.getvalue(), "docmint_images.pdf", "application/pdf", type="primary")
         st.markdown('</div>', unsafe_allow_html=True)
 else:
     st.info("Select a tool from the sidebar.")
