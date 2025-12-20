@@ -4,6 +4,5 @@ PyPDF2
 python-pptx
 nbformat
 nbconvert
-weasyprint
+pdfkit
 pdf2image
-
