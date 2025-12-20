@@ -1,8 +1,9 @@
 streamlit
-PyPDF2
 Pillow
+PyPDF2
 python-pptx
-pdf2image
 nbformat
 nbconvert
-xhtml2pdf
+weasyprint
+pdf2image
+
